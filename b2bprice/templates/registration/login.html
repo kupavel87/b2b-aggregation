@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}B2B Price - Login{% endblock %}
+{% block head %}
+<link rel="stylesheet" type="text/css" href="/static/css/signin.css">{% endblock %}
+{% block top %}{% endblock %}
+
+{% block content %}
+
+<form class="form-signin text-center" method="post" action="{% url 'login' %}">
+  {% csrf_token %}
+  
+  {% if form.errors %}
+    <p>Ошибка пароля. Попробуйте ввести еще раз</p>
+  {% endif %}
+  {% if next %}
+  {% if user.is_authenticated %}
+    <h1 class="h3 mb-3 font-weight-normal">Недостаточно прав. Используйте другой аккаунт</h1>
+  {% else %}
+    <h1 class="h3 mb-3 font-weight-normal">Пожалуйста авторизуйтесь</h1>
+  {% endif %}
+  {% endif %}
+  <label for="id_username" class="sr-only">Логин</label>
+  <input type="text" id="id_username" class="form-control" placeholder="Логин" required="" autofocus="" name="username">
+  <label for="id_password" class="sr-only">Пароль</label>
+  <input type="password" id="id_password" class="form-control mb-2" placeholder="Пароль" required="" name="password">
+  <button class="btn btn-lg btn-primary btn-block" type="submit" value="login">Войти</button>
+  <input type="hidden" name="next" value="{{ next }}" />
+  <p class="mt-5 mb-3 text-muted">©A1 Cloud 2019</p>
+</form>
+
+{% endblock %}

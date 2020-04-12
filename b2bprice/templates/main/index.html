@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}B2B Price{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="mt-2 mb-2 mx-4">
+        <a class='btn btn-primary' href={% url 'main:catalog' %}>Каталог</a>
+        <a class='btn btn-primary' href={% url 'main:historyupdate' %}>История обновлений</a>
+    </div>
+    <div class="form-group mt-2 mb-2">
+        <h3>Поиск</h3>
+        <form action="{% url 'main:search' %}" class="form-inline mx-4" method="POST">
+            {% csrf_token %}
+            <input type="text" class="form-control" id="search" name="search" placeholder="Строка поиска">
+            <button type="submit" class="btn btn-primary mx-2" name="btn">Поиск</button>
+        </form>
+    </div>
+    <div class="form-group mt-2 mb-2">
+        <h3>Экспорт в 1с</h3>
+        <form action="{% url 'main:export_1c' %}" class="form-inline mx-4" method="POST">
+            {% csrf_token %}
+            <select class="form-control" id="exampleFormControlSelect1" name="groupid">
+                {% for cat in categories %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary mx-2" name="btn">Сформировать</button>
+        </form>
+        <p>
+            <button class="btn btn-link btn-lg" type="button" data-toggle="collapse" data-target="#collapseExample"
+                aria-expanded="false" aria-controls="collapseExample">
+                Настройки
+            </button>
+        </p>
+        <div class="collapse" id="collapseExample">
+            <form action="{% url 'main:export_settings' %}" class="form-inline mx-4" method="POST">
+                {% csrf_token %}
+                <select class="form-control" id="exampleFormControlSelect1" name="groupid">
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary mx-2" name="btn">Изменить</button>
+            </form>
+        </div>
+    </div>
+    {% endblock %}

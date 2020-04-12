@@ -1,0 +1,470 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.6.2/css/bootstrap-slider.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mb-2">
+    <div class="mb-2">
+        <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseFilters"
+            aria-expanded="false" aria-controls="collapseFilters" id="filter">
+            Фильтры <span class="badge badge-primary">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </span>
+        </button>
+        <button class="btn btn-success" type="button" data-toggle="collapse" data-target="#collapseSearch"
+            aria-expanded="false" aria-controls="collapseSearch">
+            Поиск
+        </button>
+    </div>
+    <div class="accordion mb-2" id="accordionExample">
+        <div id="collapseFilters" class="collapse" data-parent="#accordionExample">
+            <div class="card card-body">
+                <table class="table table-striped">
+                    <tbody>
+                        <tr>
+                            <th>Группы</th>
+                            <td id="groups"></td>
+                        </tr>
+                        <tr>
+                            <th>Производители</th>
+                            <td id="vendors"></td>
+                        </tr>
+                        <tr>
+                            <th>Цена</th>
+                            <td>
+                                <div class="row">
+                                    <div class="col-4">от<input type="number" id="in_start">000 ₽</div>
+                                    <div class="col-3">до<input type="number" id="in_end">000 ₽</div>
+                                </div>
+                                <b id="start">0</b>
+                                <input id="ex2" type="text" value="" data-slider-id="ex1">
+                                <b id="end">100</b>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Остатки</th>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-success stock">Только в наличии</button>
+                                    <button type="button" class="btn btn-light btn-outline-dark allstock">Все</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="collapseSearch" {% if search %} class="collapse show" {% else %} class="collapse" {% endif %}
+            data-parent="#accordionExample">
+            <div class="card card-body">
+                <form action="{% url 'main:search' %}" class="form-inline" method="POST">
+                    {% csrf_token %}
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Строка поиска"
+                        value="{{ search }}">
+                    <button type="submit" class="btn btn-primary mx-2" name="btn">Искать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <table class="table table-striped table-bordered table-sm table-responsive-lg">
+        <thead class="thead-dark">
+            <tr align="center">
+                <th>Название</th>
+                <th>Поставщик</th>
+                <th>Остаток</th>
+                <th>Цена</th>
+                <th>Валюта</th>
+            </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
+    <p>{{ text }}</p>
+
+
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel">Modal title</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+                <div class="modal-footer">
+                    <p id="modalInfo"></p>
+                    <form action="{% url 'main:viewproperty' %}" method="POST">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary" name="product_id" id="product_id" value=""
+                            formtarget="_blank">Открыть в новом окне</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.6.2/bootstrap-slider.min.js"></script>
+<script type="text/javascript">
+    var products = [{% for id, item in result.products.items %}
+            {"id": {{ id }},
+             "name": "{{ item.name }}",
+             "partnumber": "{{ item.partnumber }}",
+             "group": "{{ item.catalog }}",
+             "vendor": "{{ item.vendor }}",
+             "price": {
+             {% for key, value in item.price.items %}
+             "{{ key }}": [{% for v in value %}"{{ v }}",{% endfor %}],
+             {% endfor %}
+             }
+            },
+        {% endfor %}];
+    var providers = [{% for id, item in result.provider.items %}
+        {"id": {{ id }},
+         "name": "{{ item.name }}",
+         "danger": "{{ item.danger }}"
+        },
+    {% endfor %}];
+    var filter = {
+        "groups": new Set(),
+        "vendors": new Set(),
+        "price": [0,100],
+        "stock": true
+    }
+    function UpdateFilters() {
+        $("#filter").html("Фильтры  <span class='badge badge-primary'><div class='spinner-border spinner-border-sm' role='status'><span class='sr-only'>Loading...</span></div></span>");
+        setInterval(UpdateFilters2, 1);
+    }
+
+    function UpdateFilters2() {
+        var filter_length = 0;
+        var rows = document.getElementById("tbody").rows;
+        for(var j=0; j < products.length; j++) {
+            check_price = false;
+            check_stock = !filter.stock;
+            for(var i=0; i < providers.length && !(check_price && check_stock); i++) {
+                var id = providers[i].id
+                var price = products[j].price[id];
+                if (price) {
+                    if (!check_price) {
+                        var value = parseFloat(price[1].replace(",", ".").replace(/\u00a0/g, ""));
+                        if (value >= filter.price[0] * 1000 && value <= filter.price[1] * 1000) {
+                                check_price = true;
+                        };
+                    };
+                    if (!check_stock) {
+                        if (price[0] != "0") {
+                            check_stock = true;
+                        };
+                    };
+                };
+            };
+
+            if (filter.vendors.includes(products[j].vendor) && filter.groups.includes(products[j].group) && check_price && check_stock) {
+                for(var i=0; i<providers.length; i++) {
+                    rows[providers.length*j+i].style.display = '';
+                };
+                if (filter_length % 2 == 0) {
+                     rows[providers.length*j].querySelector('#name').setAttribute('bgcolor', '#f2f2f');
+                } else {
+                     rows[providers.length*j].querySelector('#name').setAttribute('bgcolor', '#ffffff');
+                }
+                filter_length += 1;
+            } else {
+                for(var i=0; i<providers.length; i++) {
+                    rows[providers.length*j+i].style.display = 'none';
+                };
+            };
+        };
+        $("#filter").html("Фильтры  <span class='badge badge-primary'>" + filter_length + "</span>");
+    };
+
+    $(document).ready(function () {
+        var tbody = $("#tbody")[0];
+        var all_groups = [];
+        var all_vendors = [];
+        var maxprice = 0.0;
+        var minprice = -1.0;
+        for(var j=0; j < products.length; j++) {
+            var item = products[j];
+            all_groups.push(item.group);
+            all_vendors.push(item.vendor);
+
+            var tr = document.createElement("tr");
+            tr.align = "center";
+            var Column = document.createElement("td");
+            Column.align = "left";
+            Column.id = "name";
+            Column.rowSpan = providers.length;
+            var Button = document.createElement("button");
+            Button.className = "btn btn-link product_id";
+            Button.value = item.id;
+            Button.innerHTML = item.name;
+            var Code = document.createElement("div");
+            Code.className = "ml-3";
+            Code.innerHTML = "Код: " + item.partnumber;
+            Column.appendChild(Button);
+            Column.appendChild(Code);
+            tr.appendChild(Column);
+            Column = document.createElement("td");
+            Column.className = providers[0].danger;
+            Column.innerHTML = providers[0].name;
+            tr.appendChild(Column);
+            var id = providers[0].id
+            var price=item.price[id];
+            if (price) {
+                var td = document.createElement("td");
+                td.innerHTML = price[0];
+                tr.appendChild(td);
+                td = document.createElement("td");
+                td.innerHTML = price[1];
+                tr.appendChild(td);
+                td = document.createElement("td");
+                if (price[2] == "USD") {td.innerHTML = "<h4>$</h4>";}
+                else {td.innerHTML = "<h4>₽</h4>";};
+                tr.appendChild(td);
+                
+                var value = parseFloat(price[1].replace(",", ".").replace(/\u00a0/g, ""));
+                if (value > maxprice) {maxprice = value;}
+                if (minprice > 0) {
+                    if (value < minprice && value != "0") {minprice = value;}
+                } else {minprice = value;};
+            } else {
+                var td = document.createElement("td");
+                td.colSpan = 3;
+                tr.appendChild(td);
+            };
+            tbody.appendChild(tr);
+
+            for(var i=1; i<providers.length; i++) {
+                var tr = document.createElement("tr");
+                tr.align = "center";
+                var td = document.createElement("td");
+                td.className = providers[i].danger;
+                td.innerHTML = providers[i].name;
+                tr.appendChild(td);
+                var id = providers[i].id
+                var price=item.price[id];
+                if (price) {
+                    td = document.createElement("td");
+                    td.innerHTML = price[0];
+                    tr.appendChild(td);
+                    td = document.createElement("td");
+                    td.innerHTML = price[1];
+                    tr.appendChild(td);
+                    td = document.createElement("td");
+                    if (price[2] == "USD") {td.innerHTML = "<h4>$</h4>";}
+                    else { td.innerHTML = "<h4>₽</h4>";};
+                    tr.appendChild(td);
+
+                    var value = parseFloat(price[1].replace(",", ".").replace(/\u00a0/g, ""));
+                    if (value > maxprice) {maxprice = value;}
+                    if (minprice > 0) {
+                        if (value < minprice && value != "0") {minprice = value;}
+                    } else {minprice = value;};
+                } else {
+                    var td = document.createElement("td");
+                    td.colSpan = 3;
+                    tr.appendChild(td);
+                };
+                tbody.appendChild(tr);
+            };
+        };
+
+        filter.groups = [...new Set(all_groups)];
+        var groupsHTML = '<button class="btn btn-success mr-2 mb-1 all-group">Все</button>';
+        for (group of filter.groups) {
+            groupsHTML += '<button class="btn btn-success mr-2 mb-1 group">' + group + '</button>';
+        };
+        $('#groups').html(groupsHTML);
+
+        $(".btn.group").click(function () {
+            name = $(this).text();
+            if (this.classList.contains('btn-light')) {
+                this.classList.remove('btn-light', 'btn-outline-dark');
+                this.classList.add('btn-success');
+                filter.groups.push(name);
+            } else {
+                this.classList.remove('btn-success')
+                this.classList.add('btn-light', 'btn-outline-dark')
+                filter.groups.splice(filter.groups.indexOf(name), 1);
+            };
+            UpdateFilters();
+        });
+        $(".btn.all-group").click(function () {
+            if (this.classList.contains('btn-light')) {
+                this.classList.remove('btn-light', 'btn-outline-dark');
+                this.classList.add('btn-success');
+                filter.groups = [];
+                $(".btn.group").each(function () {
+                    name = $(this).text();
+                    this.classList.remove('btn-light', 'btn-outline-dark');
+                    this.classList.add('btn-success');
+                    filter.groups.push(name);
+                });
+            } else {
+                this.classList.remove('btn-success')
+                this.classList.add('btn-light', 'btn-outline-dark')
+                filter.groups = [];
+                $(".btn.group").each(function () {
+                    this.classList.remove('btn-success')
+                    this.classList.add('btn-light', 'btn-outline-dark')
+                });
+            };
+            UpdateFilters();
+        });
+
+        filter.vendors = [...new Set(all_vendors)]
+        vendorsHTML = '<button class="btn btn-success mr-2 mb-1 all-vendor">Все</button>';
+        for (vendor of filter.vendors) {
+            vendorsHTML += '<button class="btn btn-success mr-2 mb-1 vendor">' + vendor + '</button>';
+        };
+        $('#vendors').html(vendorsHTML);
+
+        $(".btn.vendor").click(function () {
+            name = $(this).text();
+            if (this.classList.contains('btn-light')) {
+                this.classList.remove('btn-light', 'btn-outline-dark');
+                this.classList.add('btn-success');
+                filter.vendors.push(name);
+            } else {
+                this.classList.remove('btn-success')
+                this.classList.add('btn-light', 'btn-outline-dark')
+                filter.vendors.splice(filter.vendors.indexOf(name), 1);
+            };
+            UpdateFilters();
+        });
+        $(".btn.all-vendor").click(function () {
+            if (this.classList.contains('btn-light')) {
+                this.classList.remove('btn-light', 'btn-outline-dark');
+                this.classList.add('btn-success');
+                filter.vendors = [];
+                $(".btn.vendor").each(function () {
+                    name = $(this).text();
+                    this.classList.remove('btn-light', 'btn-outline-dark');
+                    this.classList.add('btn-success');
+                    filter.vendors.push(name);
+                });
+            } else {
+                this.classList.remove('btn-success')
+                this.classList.add('btn-light', 'btn-outline-dark')
+                filter.vendors = [];
+                $(".btn.vendor").each(function () {
+                    this.classList.remove('btn-success')
+                    this.classList.add('btn-light', 'btn-outline-dark')
+                });
+            };
+            UpdateFilters();
+        });
+        
+        minprice = Math.floor(minprice / 1000);
+        maxprice = Math.ceil(maxprice / 1000);
+        $("#ex2").bootstrapSlider({
+            max: maxprice,
+            min: minprice,
+            value: [minprice, maxprice],
+        });
+        $('#start').text(minprice * 1000);
+        $('#end').text(maxprice * 1000);
+        $('#in_start').val(minprice);
+        $('#in_start').attr("min", minprice);
+        $('#in_start').attr("max", maxprice);
+        $('#in_end').val(maxprice);
+        $('#in_end').attr("min", minprice);
+        $('#in_end').attr("max", maxprice);
+        filter.price = [minprice, maxprice];
+
+        $("#ex2").on('slideStop', function () {
+            filter.price = Array.from($(this).attr("value").split(","), x => parseInt(x));
+            $('#in_start').val(filter.price[0]);
+            $('#in_start').attr("max", filter.price[1]);
+            $('#in_end').attr("min", filter.price[0]);
+            $('#in_end').val(filter.price[1]);
+            UpdateFilters();
+        });
+        $("#in_start").on('change', function () {
+            var value = parseInt($(this).val());
+            var min = parseInt($(this).attr("min"));
+            var max = parseInt($(this).attr("max"));
+            if (value < min) {
+                $(this).val(min);
+            };
+            if (value > max) {
+                $(this).val(max);
+            }
+            filter.price[0] = parseInt($(this).val());
+            $('#in_end').attr("min", filter.price[0]);
+            $("#ex2").bootstrapSlider("setValue", filter.price);
+            UpdateFilters();
+        });
+        $("#in_end").on('change', function () {
+            var value = parseInt($(this).val());
+            var min = parseInt($(this).attr("min"));
+            var max = parseInt($(this).attr("max"));
+            if (value < min) {
+                $(this).val(min);
+            };
+            if (value > max) {
+                $(this).val(max);
+            }
+            filter.price[1] = parseInt($(this).val());
+            $('#in_start').attr("max", filter.price[1]);
+            $("#ex2").bootstrapSlider("setValue", filter.price);
+            UpdateFilters();
+        });
+
+        $('.btn.product_id').on('click', function () {
+            var id = $(this).attr('value');
+            $.ajax({
+                url: "{% url 'main:prepareproperty' %}",
+                method: 'POST',
+                data: {
+                    "product_id": id,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function (data) {
+                    $("#modalLabel").html(data.name);
+                    $("#modalBody").html(data.body);
+                    $("#modalInfo").html(data.text);
+                },
+                error: function (error) {
+                    console.log(error);
+                    $("#modalLabel").html("");
+                    $("#modalBody").html("<h3>Ошибка</h3>");
+                    $("#modalInfo").html("");
+                }
+            });
+            $("#product_id").val(id);
+            $('#myModal').modal("show");
+        });
+
+        $(".btn.allstock").click(function () {
+            if (this.classList.contains('btn-light')) {
+                this.classList.remove('btn-light', 'btn-outline-dark');
+                this.classList.add('btn-success');
+                $(".stock").removeClass('btn-success').addClass('btn-light btn-outline-dark');
+                filter.stock = false;
+                UpdateFilters();
+            }
+        });
+        $(".btn.stock").click(function () {
+            if (this.classList.contains('btn-light')) {
+                this.classList.remove('btn-light', 'btn-outline-dark');
+                this.classList.add('btn-success');
+                $(".allstock").removeClass('btn-success').addClass('btn-light btn-outline-dark');
+                filter.stock = true;
+                UpdateFilters();
+            }
+        });
+        UpdateFilters();
+    });
+</script>
+{% endblock %}

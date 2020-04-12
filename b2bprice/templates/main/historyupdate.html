@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}B2B Products{% endblock %}
+
+{% block content %}
+<div class="container mb-2">
+    <h3>История обновлений</h3>
+    {{text}}
+    <table class="table table-striped table-bordered table-sm">
+
+        <thead>
+            <tr align="center">
+                <th>Дата</th>
+                {% for provider in providers %}
+                    <th>{{ provider.name }}</th>
+                {% endfor %}
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for update in updates %}
+            <tr align="center">
+                <td>{{update.date}}</td>
+                {% for provider in providers %}
+                    <td>{{ update|get_item:provider.name }}</td>
+                {% endfor %}
+                <td width="100">
+                    <form action="{% url 'main:deleteupdate' %}" method="POST">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary" name="date"
+                            value="{{update.date|date:'d-m-Y H:i:s.u (T)'}}">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if updates.paginator.num_pages > 1 %}
+    <nav aria-label="Page navigation example">
+        <ul class="pagination justify-content-center">
+            {% if updates.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page=1">1</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ updates.previous_page_number }}">
+                    <<</a> </li> {% endif %} <li class="page-item active" aria-current="page">
+                        <a class="page-link" href="#">{{ updates.number }} <span class="sr-only">(current)</span></a>
+                        {% if updates.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ updates.next_page_number }}">>></a>
+            <li class="page-item"><a class="page-link"
+                    href="?page={{ updates.paginator.num_pages }}">{{ updates.paginator.num_pages }}</a>
+                {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

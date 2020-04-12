@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mb-2">
+    <p>{{ text }}</p>
+    <table class="table table-striped table-bordered table-sm table-responsive-lg">
+        <thead class="thead-dark">
+            <tr align="center">
+                <th>ИД поставщика</th>
+                <th>Номер производителя</th>
+                <th>Название</th>
+                <th>Производитель</th>
+                <th>Остаток</th>
+                <th>Цена</th>
+                <th>Валюта</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for _, value in price.items %}
+            <tr align="center">
+                <td>{{ value.id }}</td>
+                <td>{{ value.partnumber }}</td>
+                <td>{{ value.name }}</td>
+                <td>{{ value.vendor }}</td>
+                {% if value.price %}
+                <td class="balance">{{ value.balance }}</td>
+                <td class="price">{{ value.price }}</td>
+                <td>
+                    {% if value.currency == "USD" %}
+                    <h4>$</h4>
+                    {% else %}
+                    <h4>₽</h4>
+                    {% endif %}
+                </td>
+                {% else %}
+                <td colspan="3"></td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+{% load static %}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}A1 Cloud{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="shortcut icon" href="{% static 'favicon.ico' %}" />
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <link href="https://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet">
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+    {% block top %}
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-3">
+        <a class="navbar-brand" href="{% url 'main:index' %}">
+            <h4 class="mt-1">A1 Cloud</h4>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault"
+            aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+            <div class="container text-center mr-auto">
+                <span class="navbar-text">
+                    <h3 class="mb-0 mt-0">{{ page_name }}</h3>
+                </span>
+            </div>
+            <!-- <ul class="navbar-nav mr-auto">
+                <li class="nav-item active text-center">
+                    <a class="nav-link" href="#">{{ page_name }}<span class="sr-only">(current)</span></a>
+                </li>
+            </ul> -->
+
+            <div class="dropdown">
+                <a class="btn btn-outline-light dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    {{user.get_username}}
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuLink">
+                    <a class="dropdown-item" href="#">Профиль</a>
+                    <a class="dropdown-item" href="{% url 'providers:index' %}">Поставщики</a>
+                    <div class="dropdown-divider"></div>
+                    {% if user.is_staff %}
+                    <a class="dropdown-item" href="{% url 'admin:index' %}" target="_blank">Управление сайтом</a>
+                    <div class="dropdown-divider"></div>
+                    {% endif %}
+                    <a class="dropdown-item" href="{% url 'logout' %}">Выход</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endblock %}
+    {% for message in messages %}
+    <li class="alert alert-{{ message.tags }}">
+        {{ message }}
+    </li>
+    {% endfor %}
+    {% block content %}
+    {% endblock %}
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+    {% block script %}
+    {% endblock %}
+</body>

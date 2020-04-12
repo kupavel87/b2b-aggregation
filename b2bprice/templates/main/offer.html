@@ -1,0 +1,97 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container-fluid mb-2">
+    <table class="table table-striped table-bordered table-sm table-responsive-lg">
+        <thead class="thead-dark">
+            <tr align="center">
+                <th>Название</th>
+                <th>Группа</th>
+                <th>Поставщик</th>
+                <th>Остаток</th>
+                <th>Цена</th>
+                <th>Валюта</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for id, value in result.items %} {% if id != "provider" %}
+            <tr align="center" class="product">
+                <td align="left" rowspan="{{ result.provider|length }}" {% if forloop.counter|divisibleby:2 %}bgcolor="#f2f2f2" {% else %}bgcolor="#ffffff" {% endif %}>
+                    <button class="btn btn-link product_id" name="product_id" value="{{id}}">{{ value.name }}</button>
+                    <div class="ml-3">Код: {{ value.partnumber }}</div>
+                </td>
+                <td class="group" id={{ value.catalog_id}} rowspan="{{ result.provider|length }}" {% if forloop.counter|divisibleby:2 %}bgcolor="#f2f2f2" {% else %}bgcolor="#ffffff" {% endif %}>
+                    {{ value.catalog }}
+                </td>
+                {% for idx, provider in result.provider.items %} {% if not forloop.first %}
+                <tr align="center" class="{{ id }}">
+                    {% endif %}
+                    <td class="{{ provider.danger }}">{{ provider.name }}</td>
+                    {% with price=value.price|get_item:idx %} {% if price %}
+                    <td class="balance">{{ price.0 }}</td>
+                    <td class="price">{{ price.1 }}</td>
+                    <td>
+                        {% if price.2 == "USD" %}
+                        <h4>$</h4>
+                        {% else %}
+                        <h4>₽</h4>
+                        {% endif %}
+                    </td>
+                    {% else %}
+                    <td colspan="3"></td>
+                    {% endif %} {% endwith %}
+                </tr>
+                {% endfor %} {% endif %} {% endfor %}
+        </tbody>
+    </table>
+    <p>{{ text }}</p>
+
+
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel">Modal title</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+                <div class="modal-footer">
+                    <p id="modalInfo"></p>
+                    <form action="{% url 'main:viewproperty' %}" method="POST">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary" name="product_id" id="product_id" value="" formtarget="_blank">Открыть в новом окне</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} {% block script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.6.2/bootstrap-slider.min.js"></script>
+<script type="text/javascript">
+    $('.btn.product_id').on('click', function() {
+        var id = $(this).attr('value');
+        $.ajax({
+            url: "{% url 'main:prepareproperty' %}",
+            method: 'POST',
+            data: {
+                "product_id": id,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(data) {
+                $("#modalLabel").html(data.name);
+                $("#modalBody").html(data.body);
+                $("#modalInfo").html(data.text);
+            },
+            error: function(error) {
+                console.log(error);
+                $("#modalLabel").html("");
+                $("#modal-body").html("<h3>Ошибка</h3>");
+                $("#modalInfo").html("");
+            }
+        });
+        $("#product_id").val(id);
+        $('#myModal').modal("show");
+    });
+</script>
+{% endblock %}

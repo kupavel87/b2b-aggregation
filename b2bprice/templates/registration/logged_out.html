@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}B2B Price - Logout{% endblock %}
+{% block head %}
+<link rel="stylesheet" type="text/css" href="/static/css/signin.css">{% endblock %}
+{% block top %}{% endblock %}
+
+{% block content %}
+
+<form class="form-signin text-center">
+  <h2 class="h3 mb-3 font-weight-normal">Спасибо за использование</h2>
+  
+  <a href="{% url 'login' %}"><h2>Посетить снова</h2></a>
+  <p class="mt-5 mb-3 text-muted">©A1 Cloud 2019</p>
+</form>
+
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    {{text}}
+    <form action="{% url 'providers:save_mapping' %}" method="POST" class="mb-2">
+        {% csrf_token %}
+        <table class="table table-striped table-bordered table-sm" id="table-1">
+            <thead class="thead-dark">
+                <tr align="center">
+                    <th>Код</th>
+                    <th>Название</th>
+                    <th>Соответствие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in provider_catalog %}
+                <tr>
+                    <td>
+                        <input type="text" readonly class="form-control-plaintext" name="catalog" value="{{ item.id }}" style="margin-left: {% widthratio 25 1 item.level %}px">
+                    </td>
+                    <td>
+                        <div style="margin-left: {% widthratio 35 1 item.level %}px">{{ item.name }}</div>
+                    </td>
+                    {% load mptt_tags %}
+                    <td>
+                        <select class="form-control form-control-sm" name="category">
+                            <option value="0" ></option>
+                            {% recursetree catalog %}
+                                <option value="{{ node.id }}"
+                                    {% if node.id == mapping|get_item:item.id %}
+                                    selected
+                                    {% endif %}
+                                >
+                                {% if node.level == 1 %}
+                                ---
+                                {% elif node.level == 2 %}
+                                ------
+                                {% endif %}
+                                    {{ node.name }}
+                                </option>
+                            {% if not node.is_leaf_node %}
+                                {{ children }}
+                            {% endif %}
+                        {% endrecursetree %}
+                        </select>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-success" name="provider_id" value="{{ provider.id }}">Сохранить</button>
+    </form>
+</div>
+{% endblock %}
